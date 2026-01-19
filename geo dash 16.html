@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini Dash - Edition Spéciale</title>
+    <style>
+        body { margin: 0; background: white; overflow: hidden; font-family: 'Arial', sans-serif; color: black; }
+        #gameContainer { position: relative; width: 100vw; height: 400px; margin: 0; overflow: hidden; }
+        #ui { position: absolute; top: 10px; left: 10px; color: black; font-size: 20px; z-index: 10; }
+        
+        /* Menu avec image BARC'INDUSTRIE bien visible */
+        #mainMenu { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background-image: url("barc'industrie fond.jpg"); 
+            background-size: contain; /* L'image s'adapte sans être coupée */
+            background-repeat: no-repeat;
+            background-color: #000033; /* Bleu foncé si l'image ne remplit pas tout */
+            background-position: center; 
+            z-index: 20; color: white;
+        }
+
+        /* Style pour le titre du menu */
+        #mainMenu h1 {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        .menu-button { background-color: #007bff; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 24px; cursor: pointer; margin-top: 10px; }
+        canvas { display: block; margin: auto; background: white; border-bottom: 5px solid #333; }
+
+        /* Style pour la vidéo de victoire */
+        #victoryVideo {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; background: #eee; padding: 10px;">
+        <audio controls autoplay loop><source src="5han6.mp3" type="audio/mpeg"></audio>
+    </div>
+
+    <video id="victoryVideo">
+        <source src="GoldenBravo.mp4" type="video/mp4">
+    </video>
+
+    <div id="gameContainer">
+        <div id="ui">Score: <span id="scoreDisplay">0</span></div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="mainMenu">
+            <h1>Mini Dash</h1>
+            <button class="menu-button" onclick="startGame()">Commencer</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const mainMenu = document.getElementById('mainMenu');
+        const victoryVideo = document.getElementById('victoryVideo');
+
+        canvas.width = window.innerWidth;
+        canvas.height = 400;
+
+        let score = 0;
+        let gameActive = false;
+        let lastObstacleTime = 0; 
+        
+        let player = { x: 50, y: 300, w: 50, h: 50, dy: 0, jumpForce: -12, gravity: 0.8, grounded: true };
+        let obstacles = [];
+        let playerImg = new Image();
+        playerImg.src = 'joueur.jpeg.png';
+
+        function startGame() {
+            mainMenu.style.display = 'none';
+            victoryVideo.style.display = 'none';
+            gameActive = true;
+            resetGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            score = 0;
+            scoreDisplay.innerText = score;
+            player.y = 300; player.dy = 0;
+            obstacles = [];
+            lastObstacleTime = 0;
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            player.dy += player.gravity;
+            player.y += player.dy;
+            if (player.y > 300) { player.y = 300; player.dy = 0; player.grounded = true; }
+
+            lastObstacleTime++;
+            if (Math.random() < 0.03 && lastObstacleTime > 60) {
+                obstacles.push({ x: canvas.width, y: 320, w: 30, h: 30 });
+                lastObstacleTime = 0; 
+            }
+
+            obstacles.forEach((obstacle, index) => {
+                obstacle.x -= 7; 
+
+                // Collision
+                if (player.x < obstacle.x + obstacle.w && player.x + player.w > obstacle.x &&
+                    player.y < obstacle.y + obstacle.h && player.y + player.h > obstacle.y) {
+                    gameActive = false;
+                    alert(`Game Over ! Score: ${score}`);
+                    mainMenu.style.display = 'flex';
+                    resetGame();
+                }
+
+                // Score et Victoire
+                if (obstacle.x + obstacle.w < 0) {
+                    obstacles.splice(index, 1);
+                    score++;
+                    scoreDisplay.innerText = score;
+
+                    // SI LE SCORE ATTEINT 100
+                    if (score >= 100) {
+                        winGame();
+                    }
+                }
+            });
+        }
+
+        function winGame() {
+            gameActive = false;
+            victoryVideo.style.display = 'block';
+            victoryVideo.play();
+            
+            // Quand la vidéo finit, on revient au menu
+            victoryVideo.onended = function() {
+                victoryVideo.style.display = 'none';
+                mainMenu.style.display = 'flex';
+                resetGame();
+            };
+        }
+
+        function drawGame() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (playerImg.complete) ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
+            obstacles.forEach(obs => { ctx.fillStyle = "red"; ctx.fillRect(obs.x, obs.y, obs.w, obs.h); });
+        }
+
+        function gameLoop() {
+            if (gameActive) { updateGame(); drawGame(); requestAnimationFrame(gameLoop); }
+        }
+
+        const jump = () => { if (gameActive && player.grounded) { player.dy = player.jumpForce; player.grounded = false; } };
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') jump(); });
+        window.addEventListener('click', jump);
+    </script>
+</body>
+</html>
